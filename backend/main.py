@@ -34,9 +34,16 @@ def init_db(db_path: str = "lost_and_found.db") -> None:
     finally:
         conn.close()
 
-@app.route('/')
-def index():
-    return "Hello, World!"
+# GET /items - return all items
+@app.route('/items', methods=['GET'])
+def get_items() -> tuple[dict, int]:
+    conn = sqlite3.connect("lost_and_found.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items")
+    items = cursor.fetchall()
+    return flask.jsonify(items), 200
+
+
 
 if __name__ == '__main__':
     # Init the db
