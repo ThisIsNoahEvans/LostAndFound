@@ -1,1 +1,1 @@
-"""Tkinter desktop UI for Lost and Found (assignment frontend)."""
+"""Tkinter app interface for Lost and Found"""

@@ -2,7 +2,7 @@
 
 import sqlite3
 import pytest
-from backend.main import init_db
+from backend.model import init_db
 
 
 # Create a temporary DB for each test, and init it in the same way as the main app
