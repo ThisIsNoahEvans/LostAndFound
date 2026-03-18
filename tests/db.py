@@ -30,6 +30,7 @@ def test_insert_valid_row(temp_db):
     assert row[0] == 1
     assert row[1] == "Keys"
 
+
 ########################################################
 # TEST 2 - INSERT /items - insert a row with an empty name #
 ########################################################
