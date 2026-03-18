@@ -3,11 +3,15 @@
 import sqlite3
 import flask
 
+
 app = flask.Flask(__name__)
+
 
 # Item class
 class Item:
-    def __init__(self, id: int, item_name: str, category: str, date_found_lost: str, location: str, status: str, contact_info: str):
+    def __init__(self, id: int, item_name: str, category: str,
+                 date_found_lost: str, location: str, status: str,
+                 contact_info: str) -> None:
         self.id: int = id
         self.item_name: str = item_name
         self.category: str = category
@@ -15,7 +19,7 @@ class Item:
         self.location: str = location
         self.status: str = status
         self.contact_info: str = contact_info
-        
+
     # Return as a dictionary - this could then be used to convert to JSON
     def to_dict(self) -> dict:
         return {
@@ -27,6 +31,7 @@ class Item:
             "status": self.status,
             "contact_info": self.contact_info
         }
+
 
 # Init the db if it doesn't exist (first run)
 def init_db(db_path: str = "lost_and_found.db") -> None:
@@ -47,6 +52,7 @@ def init_db(db_path: str = "lost_and_found.db") -> None:
     finally:
         conn.close()
 
+
 # GET /items - return all items
 # curl http://127.0.0.1:5000/items
 @app.route('/items', methods=['GET'])
@@ -60,18 +66,47 @@ def get_items() -> tuple[dict, int]:
         return flask.jsonify({}), 204
     return flask.jsonify(items), 200
 
+
 # POST /items - create a new item
-# curl -X POST http://127.0.0.1:5000/items -H "Content-Type: application/json" -d '{"name":"Keys","category":"electronics","date_found":"2026-03-17","location":"Library","status":"Found","contact_info":"student@exeter.ac.uk"}'
+# curl -X POST http://127.0.0.1:5000/items -H "Content-Type: application/json" \
+#   -d '{"name":"Keys","category":"electronics","date_found":"2026-03-17",...}'
 @app.route('/items', methods=['POST'])
 def create_item() -> tuple[dict, int]:
+    
+    # Check we have a proper JSON body
     data = flask.request.json
-    item = Item(None, data['name'], data['category'], data['date_found'], data['location'], data['status'], data['contact_info'])
+    if not data or not isinstance(data, dict):
+        return flask.jsonify({"error": "JSON body required"}), 400
+
+    # Check we have all the required fields
+    required = (
+        "name", "category", "date_found", "location", "status", "contact_info",
+    )
+    if any(not str(data.get(k, "")).strip() for k in required):
+        return flask.jsonify({"error": "Missing required fields"}), 400
+
+    # Create the item
+    item = Item(
+        None,
+        data["name"],
+        data["category"],
+        data["date_found"],
+        data["location"],
+        data["status"],
+        data["contact_info"],
+    )
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO items (name, category, date_found, location, status, contact_info) VALUES (?, ?, ?, ?, ?, ?)", (item.item_name, item.category, item.date_found_lost, item.location, item.status, item.contact_info))
+    cursor.execute(
+        "INSERT INTO items (name, category, date_found, location, status, "
+        "contact_info) VALUES (?, ?, ?, ?, ?, ?)",
+        (item.item_name, item.category, item.date_found_lost, item.location,
+         item.status, item.contact_info)
+    )
     conn.commit()
     new_id = cursor.lastrowid  # ID assigned by the database
     return flask.jsonify({**item.to_dict(), "id": new_id}), 201
+
 
 # GET /items/<id> - return an item by id
 # curl http://127.0.0.1:5000/items/1
@@ -80,22 +115,50 @@ def get_item(id: int) -> tuple[dict, int]:
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM items WHERE id = ?", (id,))
-    item = cursor.fetchone()
-    if not item:
+    row = cursor.fetchone()
+    if not row:
         return flask.jsonify({}), 404
-    return flask.jsonify(item), 200
+    item = Item(
+        row[0], row[1], row[2], row[3], row[4], row[5], row[6],
+    )
+    return flask.jsonify(item.to_dict()), 200
+
 
 # PUT /items/<id> - update an item by id
-# curl -X PUT http://127.0.0.1:5000/items/1 -H "Content-Type: application/json" -d '{"name":"Keys","category":"electronics","date_found":"2026-03-17","location":"Library","status":"Claimed","contact_info":"student@exeter.ac.uk"}'
+# curl -X PUT http://127.0.0.1:5000/items/1 -H "Content-Type: application/json" \
+#   -d '{"name":"Keys","category":"electronics",...}'
 @app.route('/items/<int:id>', methods=['PUT'])
 def update_item(id: int) -> tuple[dict, int]:
     data = flask.request.json
-    item = Item(id, data['name'], data['category'], data['date_found'], data['location'], data['status'], data['contact_info'])
+    if not data or not isinstance(data, dict):
+        return flask.jsonify({"error": "JSON body required"}), 400
+
+    required = (
+        "name", "category", "date_found", "location", "status", "contact_info",
+    )
+    if any(not str(data.get(k, "")).strip() for k in required):
+        return flask.jsonify({"error": "Missing required fields"}), 400
+
+    item = Item(
+        id,
+        data["name"],
+        data["category"],
+        data["date_found"],
+        data["location"],
+        data["status"],
+        data["contact_info"],
+    )
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
-    cursor.execute("UPDATE items SET name = ?, category = ?, date_found = ?, location = ?, status = ?, contact_info = ? WHERE id = ?", (item.item_name, item.category, item.date_found_lost, item.location, item.status, item.contact_info, id))
+    cursor.execute(
+        "UPDATE items SET name = ?, category = ?, date_found = ?, "
+        "location = ?, status = ?, contact_info = ? WHERE id = ?",
+        (item.item_name, item.category, item.date_found_lost, item.location,
+         item.status, item.contact_info, id)
+    )
     conn.commit()
     return flask.jsonify(item.to_dict()), 200
+
 
 # DELETE /items/<id> - delete an item by id
 # curl -X DELETE http://127.0.0.1:5000/items/1
@@ -103,9 +166,19 @@ def update_item(id: int) -> tuple[dict, int]:
 def delete_item(id: int) -> tuple[dict, int]:
     conn = sqlite3.connect("lost_and_found.db")
     cursor = conn.cursor()
+    
+    # check if the item exists
+    cursor.execute("SELECT * FROM items WHERE id = ?", (id,))
+    row = cursor.fetchone()
+    if not row:
+        return flask.jsonify({}), 404
+    
+    # delete the item
     cursor.execute("DELETE FROM items WHERE id = ?", (id,))
     conn.commit()
+    
     return flask.jsonify({}), 204
+
 
 if __name__ == '__main__':
     # Init the db
