@@ -37,15 +37,22 @@ class Item:
 def init_db(db_path: str = "lost_and_found.db") -> None:
     conn = sqlite3.connect(db_path)
     try:
+        # Create the items database table, if it doesn't exist
+        # Value checking on the fields
         conn.execute("""
             CREATE TABLE IF NOT EXISTS items (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                category TEXT NOT NULL,
-                date_found TEXT NOT NULL,
-                location TEXT NOT NULL,
-                status TEXT NOT NULL,
-                contact_info TEXT NOT NULL
+                name TEXT NOT NULL CHECK(length(trim(name)) > 0),
+                category TEXT NOT NULL CHECK(length(trim(category)) > 0),
+                date_found TEXT NOT NULL CHECK(
+                    date_found GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'
+                    AND date(date_found) IS NOT NULL
+                ),
+                location TEXT NOT NULL CHECK(length(trim(location)) > 0),
+                status TEXT NOT NULL CHECK(
+                    lower(status) IN ('found', 'lost', 'claimed')
+                ),
+                contact_info TEXT NOT NULL CHECK(length(trim(contact_info)) > 0)
             )
         """)
         conn.commit()
