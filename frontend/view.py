@@ -25,7 +25,6 @@ class MainView:
     )
 
     STATUS_VALUES = ("found", "lost", "claimed")
-    CATEGORY_VALUES = ("electronics", "clothing", "books", "other")
 
     # build up the UI on init
     def __init__(self, root: tk.Tk) -> None:
@@ -92,14 +91,16 @@ class MainView:
         ttk.Label(filters, text="Category:").grid(
             row=0, column=0, sticky=tk.W, padx=(0, 6), pady=2
         )
-        category_options = ("All",) + self.CATEGORY_VALUES
-        ttk.Combobox(
+        self.category_filter_combo = ttk.Combobox(
             filters,
             textvariable=self.var_filter_category,
-            values=category_options,
+            values=("All",),
             state="readonly",
             width=18,
-        ).grid(row=0, column=1, sticky=tk.W, padx=(0, 10), pady=2)
+        )
+        self.category_filter_combo.grid(
+            row=0, column=1, sticky=tk.W, padx=(0, 10), pady=2
+        )
         ttk.Label(filters, text="Status:").grid(
             row=0, column=2, sticky=tk.W, padx=(0, 6), pady=2
         )
@@ -238,6 +239,14 @@ class MainView:
         self.var_filter_category.set("All")
         self.var_filter_status.set("All")
         self.var_filter_search.set("")
+
+    def set_filter_categories(self, categories: list[str]) -> None:
+        """Update category filter options from DB values."""
+        current = self.var_filter_category.get().strip() or "All"
+        values = ("All",) + tuple(categories)
+        self.category_filter_combo["values"] = values
+        if current not in values:
+            self.var_filter_category.set("All")
 
     def get_form_payload(self) -> dict[str, str]:
         """Dict keys match backend.model (API field names)."""

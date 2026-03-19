@@ -141,6 +141,22 @@ def list_items(db_path: str | None = None) -> list[tuple[Any, ...]]:
         conn.close()
 
 
+def distinct_categories(db_path: str | None = None) -> list[str]:
+    """Return sorted unique non-empty categories from items table."""
+    if db_path is None:
+        db_path = DEFAULT_DB_PATH
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(
+            "SELECT DISTINCT category FROM items "
+            "WHERE trim(category) <> '' "
+            "ORDER BY lower(category)"
+        )
+        return [str(row[0]) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+
 # filter the items in the DB by category, status, and keyword
 def filter_items(
     db_path: str = DEFAULT_DB_PATH,

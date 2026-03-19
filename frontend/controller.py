@@ -26,6 +26,8 @@ class LostFoundController:
     def refresh(self) -> None:
         # get the data from the DB
         rows = model.list_items(self._db_path)
+        categories = model.distinct_categories(self._db_path)
+        self._view.set_filter_categories(categories)
         self._view.set_rows(rows)
 
     # apply the filters to the data
@@ -105,6 +107,10 @@ class LostFoundController:
                 parent=self._view.root,
             )
         self.refresh()
+
+    # backward-compatible hook for any save handler wiring
+    def save_item(self) -> None:
+        self.edit_item()
 
     # delete an existing item
     def delete_item(self) -> None:
