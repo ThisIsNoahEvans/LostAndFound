@@ -31,6 +31,8 @@ class MainView:
         self._on_save: Callable[[], None] = lambda: None
         self._on_delete: Callable[[], None] = lambda: None
         self._on_clear: Callable[[], None] = lambda: None
+        self._on_apply_filters: Callable[[], None] = lambda: None
+        self._on_clear_filters: Callable[[], None] = lambda: None
         self._editing_id: int | None = None
 
         root.title("Lost & Found")
@@ -48,6 +50,9 @@ class MainView:
         self.var_location = tk.StringVar()
         self.var_status = tk.StringVar(value="found")
         self.var_contact = tk.StringVar()
+        self.var_filter_category = tk.StringVar()
+        self.var_filter_status = tk.StringVar()
+        self.var_filter_search = tk.StringVar()
 
         
 
@@ -60,6 +65,38 @@ class MainView:
         ttk.Button(crud, text="Refresh list", command=self._click_refresh).pack(
             side=tk.LEFT, padx=(16, 0)
         )
+
+        filters = ttk.LabelFrame(main, text="Filters", padding=8)
+        filters.pack(fill=tk.X, pady=(0, 8))
+        ttk.Label(filters, text="Category:").grid(
+            row=0, column=0, sticky=tk.W, padx=(0, 6), pady=2
+        )
+        ttk.Entry(
+            filters, textvariable=self.var_filter_category, width=20
+        ).grid(row=0, column=1, sticky=tk.W, padx=(0, 10), pady=2)
+        ttk.Label(filters, text="Status:").grid(
+            row=0, column=2, sticky=tk.W, padx=(0, 6), pady=2
+        )
+        status_options = ("",) + self.STATUS_VALUES
+        ttk.Combobox(
+            filters,
+            textvariable=self.var_filter_status,
+            values=status_options,
+            state="readonly",
+            width=14,
+        ).grid(row=0, column=3, sticky=tk.W, padx=(0, 10), pady=2)
+        ttk.Label(filters, text="Search (name/category):").grid(
+            row=0, column=4, sticky=tk.W, padx=(0, 6), pady=2
+        )
+        ttk.Entry(
+            filters, textvariable=self.var_filter_search, width=24
+        ).grid(row=0, column=5, sticky=tk.W, padx=(0, 10), pady=2)
+        ttk.Button(
+            filters, text="Apply", command=self._click_apply_filters
+        ).grid(row=0, column=6, sticky=tk.W, padx=(0, 4), pady=2)
+        ttk.Button(
+            filters, text="Clear", command=self._click_clear_filters
+        ).grid(row=0, column=7, sticky=tk.W, pady=2)
 
         ttk.Label(main, text="All items").pack(anchor=tk.W)
         tree_frame = ttk.Frame(main)
@@ -126,8 +163,32 @@ class MainView:
     def set_clear_handler(self, handler: Callable[[], None]) -> None:
         self._on_clear = handler
 
+    def set_apply_filters_handler(self, handler: Callable[[], None]) -> None:
+        self._on_apply_filters = handler
+
+    def set_clear_filters_handler(self, handler: Callable[[], None]) -> None:
+        self._on_clear_filters = handler
+
     def _click_refresh(self) -> None:
         self._on_refresh()
+
+    def _click_apply_filters(self) -> None:
+        self._on_apply_filters()
+
+    def _click_clear_filters(self) -> None:
+        self._on_clear_filters()
+
+    def get_filter_values(self) -> tuple[str, str, str]:
+        return (
+            self.var_filter_category.get().strip(),
+            self.var_filter_status.get().strip(),
+            self.var_filter_search.get().strip(),
+        )
+
+    def clear_filters(self) -> None:
+        self.var_filter_category.set("")
+        self.var_filter_status.set("")
+        self.var_filter_search.set("")
 
     def get_form_payload(self) -> dict[str, str]:
         """Dict keys match backend.model (API field names)."""

@@ -117,6 +117,50 @@ def list_items(db_path: str = DEFAULT_DB_PATH) -> list[tuple[Any, ...]]:
         conn.close()
 
 
+def filter_items(
+    db_path: str = DEFAULT_DB_PATH,
+    category: str = "",
+    status: str = "",
+    keyword: str = "",
+) -> list[tuple[Any, ...]]:
+    """
+    Filter by category/status and keyword search across name + category.
+
+    Empty values mean "no filter" for that field.
+    """
+    clauses: list[str] = []
+    params: list[str] = []
+
+    cat = category.strip()
+    stat = status.strip()
+    term = keyword.strip()
+
+    if cat:
+        clauses.append("lower(category) = lower(?)")
+        params.append(cat)
+    if stat:
+        clauses.append("lower(status) = lower(?)")
+        params.append(stat)
+    if term:
+        clauses.append(
+            "(lower(name) LIKE lower(?) OR lower(category) LIKE lower(?))"
+        )
+        like = f"%{term}%"
+        params.extend([like, like])
+
+    query = "SELECT * FROM items"
+    if clauses:
+        query += " WHERE " + " AND ".join(clauses)
+    query += " ORDER BY id"
+
+    conn = sqlite3.connect(db_path)
+    try:
+        cur = conn.execute(query, tuple(params))
+        return list(cur.fetchall())
+    finally:
+        conn.close()
+
+
 def get_item(
     db_path: str,
     item_id: int,
@@ -135,7 +179,11 @@ def create_item(
     db_path: str,
     data: Any,
 ) -> Item:
-    """Insert from API-shaped dict (name, date_found, ...). Raises ValueError."""
+    """
+    Insert from API-shaped dict (name, date_found, ...).
+
+    Raises ValueError for validation/constraint failures.
+    """
     d = _validate_payload(data)
     item = Item(
         None,

@@ -20,10 +20,26 @@ class LostFoundController:
         view.set_save_handler(self.save_item)
         view.set_delete_handler(self.delete_item)
         view.set_clear_handler(self.clear_form)
+        view.set_apply_filters_handler(self.apply_filters)
+        view.set_clear_filters_handler(self.clear_filters)
 
     def refresh(self) -> None:
         rows = model.list_items(self._db_path)
         self._view.set_rows(rows)
+
+    def apply_filters(self) -> None:
+        category, status, keyword = self._view.get_filter_values()
+        rows = model.filter_items(
+            self._db_path,
+            category=category,
+            status=status,
+            keyword=keyword,
+        )
+        self._view.set_rows(rows)
+
+    def clear_filters(self) -> None:
+        self._view.clear_filters()
+        self.refresh()
 
     def add_item(self) -> None:
         payload = self._view.show_create_dialog()
