@@ -96,3 +96,96 @@ def test_delete_item(clean_db):
 
 def test_delete_item_not_found(clean_db):
     assert model.delete_item(model.DEFAULT_DB_PATH, 1) is False
+
+
+def _seed_filter_items() -> None:
+    model.create_item(
+        model.DEFAULT_DB_PATH,
+        dict(
+            ITEM,
+            name="Laptop",
+            category="electronics",
+            status="found",
+        ),
+    )
+    model.create_item(
+        model.DEFAULT_DB_PATH,
+        dict(
+            ITEM,
+            name="Jacket",
+            category="clothing",
+            status="lost",
+        ),
+    )
+    model.create_item(
+        model.DEFAULT_DB_PATH,
+        dict(
+            ITEM,
+            name="Chemistry Book",
+            category="books",
+            status="claimed",
+        ),
+    )
+    model.create_item(
+        model.DEFAULT_DB_PATH,
+        dict(
+            ITEM,
+            name="Headphones",
+            category="electronics",
+            status="lost",
+        ),
+    )
+
+
+def test_filter_items_no_filters_returns_all(clean_db):
+    _seed_filter_items()
+    rows = model.filter_items(model.DEFAULT_DB_PATH)
+    assert [row[1] for row in rows] == [
+        "Laptop",
+        "Jacket",
+        "Chemistry Book",
+        "Headphones",
+    ]
+
+
+def test_filter_items_category_only(clean_db):
+    _seed_filter_items()
+    rows = model.filter_items(model.DEFAULT_DB_PATH, category="electronics")
+    assert [row[1] for row in rows] == ["Laptop", "Headphones"]
+
+
+def test_filter_items_status_only(clean_db):
+    _seed_filter_items()
+    rows = model.filter_items(model.DEFAULT_DB_PATH, status="lost")
+    assert [row[1] for row in rows] == ["Jacket", "Headphones"]
+
+
+def test_filter_items_keyword_matches_name_and_category(clean_db):
+    _seed_filter_items()
+    name_match = model.filter_items(model.DEFAULT_DB_PATH, keyword="book")
+    assert [row[1] for row in name_match] == ["Chemistry Book"]
+
+    category_match = model.filter_items(model.DEFAULT_DB_PATH, keyword="elect")
+    assert [row[1] for row in category_match] == ["Laptop", "Headphones"]
+
+
+def test_filter_items_combined_filters_with_and(clean_db):
+    _seed_filter_items()
+    rows = model.filter_items(
+        model.DEFAULT_DB_PATH,
+        category="electronics",
+        status="lost",
+        keyword="head",
+    )
+    assert [row[1] for row in rows] == ["Headphones"]
+
+
+def test_filter_items_case_insensitive_and_whitespace(clean_db):
+    _seed_filter_items()
+    rows = model.filter_items(
+        model.DEFAULT_DB_PATH,
+        category="  ELECTRONICS  ",
+        status="  LoSt ",
+        keyword="  HEAD  ",
+    )
+    assert [row[1] for row in rows] == ["Headphones"]
