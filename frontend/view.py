@@ -48,47 +48,14 @@ class MainView:
         self.var_status = tk.StringVar(value="found")
         self.var_contact = tk.StringVar()
 
-        fields = [
-            ("Name", self.var_name),
-            ("Category", self.var_category),
-            ("Date (YYYY-MM-DD)", self.var_date),
-            ("Location", self.var_location),
-            ("Status", None),
-            ("Contact", self.var_contact),
-        ]
-        for r, (label, var) in enumerate(fields):
-            ttk.Label(form, text=label + ":").grid(
-                row=r, column=0, sticky=tk.W, padx=(0, 8), pady=2
-            )
-            if var is not None:
-                ttk.Entry(form, textvariable=var, width=48).grid(
-                    row=r, column=1, sticky=tk.EW, pady=2
-                )
-            else:
-                self.combo_status = ttk.Combobox(
-                    form,
-                    textvariable=self.var_status,
-                    values=self.STATUS_VALUES,
-                    state="readonly",
-                    width=45,
-                )
-                self.combo_status.grid(row=r, column=1, sticky=tk.W, pady=2)
-        form.columnconfigure(1, weight=1)
+        
 
         crud = ttk.Frame(main)
         crud.pack(fill=tk.X, pady=(0, 8))
         ttk.Button(crud, text="Add new", command=self._click_add).pack(
             side=tk.LEFT, padx=(0, 4)
         )
-        ttk.Button(crud, text="Save changes", command=self._click_save).pack(
-            side=tk.LEFT, padx=(0, 4)
-        )
-        ttk.Button(crud, text="Delete", command=self._click_delete).pack(
-            side=tk.LEFT, padx=(0, 4)
-        )
-        ttk.Button(crud, text="Clear form", command=self._click_clear).pack(
-            side=tk.LEFT, padx=(0, 4)
-        )
+
         ttk.Button(crud, text="Refresh list", command=self._click_refresh).pack(
             side=tk.LEFT, padx=(16, 0)
         )
@@ -171,6 +138,78 @@ class MainView:
             "status": self.var_status.get().strip(),
             "contact_info": self.var_contact.get().strip(),
         }
+
+    def show_create_dialog(self) -> dict[str, str] | None:
+        """Open a pop-up form for creating a new item."""
+        top = tk.Toplevel(self.root)
+        top.title("Add item")
+        top.transient(self.root)
+        top.grab_set()
+        top.resizable(False, False)
+
+        vars_map = {
+            "name": tk.StringVar(),
+            "category": tk.StringVar(),
+            "date_found": tk.StringVar(),
+            "location": tk.StringVar(),
+            "status": tk.StringVar(value="found"),
+            "contact_info": tk.StringVar(),
+        }
+
+        frame = ttk.Frame(top, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+        labels = [
+            ("Name", "name"),
+            ("Category", "category"),
+            ("Date (YYYY-MM-DD)", "date_found"),
+            ("Location", "location"),
+            ("Status", "status"),
+            ("Contact", "contact_info"),
+        ]
+        for row, (label, key) in enumerate(labels):
+            ttk.Label(frame, text=f"{label}:").grid(
+                row=row, column=0, sticky=tk.W, padx=(0, 8), pady=3
+            )
+            if key == "status":
+                combo = ttk.Combobox(
+                    frame,
+                    textvariable=vars_map[key],
+                    values=self.STATUS_VALUES,
+                    state="readonly",
+                    width=28,
+                )
+                combo.grid(row=row, column=1, sticky=tk.W, pady=3)
+            else:
+                ttk.Entry(
+                    frame,
+                    textvariable=vars_map[key],
+                    width=32,
+                ).grid(row=row, column=1, sticky=tk.EW, pady=3)
+        frame.columnconfigure(1, weight=1)
+
+        result: dict[str, str] | None = None
+
+        def on_create() -> None:
+            nonlocal result
+            result = {
+                "name": vars_map["name"].get().strip(),
+                "category": vars_map["category"].get().strip(),
+                "date_found": vars_map["date_found"].get().strip(),
+                "location": vars_map["location"].get().strip(),
+                "status": vars_map["status"].get().strip(),
+                "contact_info": vars_map["contact_info"].get().strip(),
+            }
+            top.destroy()
+
+        btns = ttk.Frame(frame)
+        btns.grid(row=len(labels), column=0, columnspan=2, sticky=tk.E, pady=(8, 0))
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(
+            side=tk.RIGHT, padx=(4, 0)
+        )
+        ttk.Button(btns, text="Create", command=on_create).pack(side=tk.RIGHT)
+
+        top.wait_window()
+        return result
 
     def get_editing_id(self) -> int | None:
         return self._editing_id

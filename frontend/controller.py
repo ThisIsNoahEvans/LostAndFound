@@ -26,14 +26,15 @@ class LostFoundController:
         self._view.set_rows(rows)
 
     def add_item(self) -> None:
-        payload = self._view.get_form_payload()
+        payload = self._view.show_create_dialog()
+        if payload is None:
+            return
         try:
             model.create_item(self._db_path, payload)
         except ValueError as e:
             messagebox.showerror("Cannot add", str(e), parent=self._view.root)
             return
         self.refresh()
-        self._view.clear_form()
 
     def save_item(self) -> None:
         item_id = self._view.get_editing_id()
