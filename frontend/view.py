@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import tkinter as tk
 from collections.abc import Callable
 from tkinter import ttk
@@ -179,6 +180,19 @@ class MainView:
                     width=28,
                 )
                 combo.grid(row=row, column=1, sticky=tk.W, pady=3)
+            elif key == "date_found":
+                date_row = ttk.Frame(frame)
+                date_row.grid(row=row, column=1, sticky=tk.EW, pady=3)
+                ttk.Entry(
+                    date_row,
+                    textvariable=vars_map[key],
+                    width=24,
+                ).pack(side=tk.LEFT, fill=tk.X, expand=True)
+                ttk.Button(
+                    date_row,
+                    text="Pick...",
+                    command=lambda v=vars_map[key]: self._set_date_from_picker(v),
+                ).pack(side=tk.LEFT, padx=(4, 0))
             else:
                 ttk.Entry(
                     frame,
@@ -207,6 +221,71 @@ class MainView:
             side=tk.RIGHT, padx=(4, 0)
         )
         ttk.Button(btns, text="Create", command=on_create).pack(side=tk.RIGHT)
+
+        top.wait_window()
+        return result
+
+    def _set_date_from_picker(self, target_var: tk.StringVar) -> None:
+        picked = self._open_date_picker(target_var.get().strip())
+        if picked is not None:
+            target_var.set(picked)
+
+    def _open_date_picker(self, initial_date: str) -> str | None:
+        """Simple built-in date picker, returns YYYY-MM-DD or None."""
+        top = tk.Toplevel(self.root)
+        top.title("Select date")
+        top.transient(self.root)
+        top.grab_set()
+        top.resizable(False, False)
+
+        today = dt.date.today()
+        default = today
+        if initial_date:
+            try:
+                default = dt.date.fromisoformat(initial_date)
+            except ValueError:
+                default = today
+
+        y_var = tk.IntVar(value=default.year)
+        m_var = tk.IntVar(value=default.month)
+        d_var = tk.IntVar(value=default.day)
+        result: str | None = None
+
+        frame = ttk.Frame(top, padding=10)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        ttk.Label(frame, text="Year").grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
+        ttk.Label(frame, text="Month").grid(row=0, column=1, sticky=tk.W, padx=(0, 6))
+        ttk.Label(frame, text="Day").grid(row=0, column=2, sticky=tk.W)
+
+        y_spin = ttk.Spinbox(frame, from_=2000, to=2100, textvariable=y_var, width=8)
+        m_spin = ttk.Spinbox(frame, from_=1, to=12, textvariable=m_var, width=6)
+        d_spin = ttk.Spinbox(frame, from_=1, to=31, textvariable=d_var, width=6)
+        y_spin.grid(row=1, column=0, sticky=tk.W, padx=(0, 6))
+        m_spin.grid(row=1, column=1, sticky=tk.W, padx=(0, 6))
+        d_spin.grid(row=1, column=2, sticky=tk.W)
+
+        msg = tk.StringVar(value="")
+        ttk.Label(frame, textvariable=msg, foreground="red").grid(
+            row=2, column=0, columnspan=3, sticky=tk.W, pady=(6, 0)
+        )
+
+        def on_ok() -> None:
+            nonlocal result
+            try:
+                picked = dt.date(y_var.get(), m_var.get(), d_var.get())
+            except ValueError:
+                msg.set("Invalid date")
+                return
+            result = picked.isoformat()
+            top.destroy()
+
+        btns = ttk.Frame(frame)
+        btns.grid(row=3, column=0, columnspan=3, sticky=tk.E, pady=(8, 0))
+        ttk.Button(btns, text="Cancel", command=top.destroy).pack(
+            side=tk.RIGHT, padx=(4, 0)
+        )
+        ttk.Button(btns, text="OK", command=on_ok).pack(side=tk.RIGHT)
 
         top.wait_window()
         return result
