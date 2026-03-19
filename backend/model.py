@@ -1,17 +1,16 @@
-"""
-Model: domain + persistence. No Tkinter.
+# Backend model to handle database
 
-Used by the Tkinter Controller. A future web UI could call the same functions.
-"""
 
 from __future__ import annotations
 
 import sqlite3
 from typing import Any
 
-
+# path of the default db (current dir)
 DEFAULT_DB_PATH: str = "lost_and_found.db"
 
+
+# required fields for an item
 REQUIRED_FIELDS: tuple[str, ...] = (
     "name",
     "category",
@@ -22,12 +21,12 @@ REQUIRED_FIELDS: tuple[str, ...] = (
 )
 
 
+# an individual item record
 class Item:
-    """One lost/found record."""
 
     def __init__(
         self,
-        item_id: int | None,
+        item_id: int | None,  # id of the item (auto increment by db)
         item_name: str,
         category: str,
         date_found_lost: str,
@@ -43,8 +42,8 @@ class Item:
         self.status: str = status
         self.contact_info: str = contact_info
 
+    # return the item data as a dictionary (to be used for JSON etc)
     def to_dict(self) -> dict[str, Any]:
-        """Shape suitable for JSON API and UI layers."""
         d: dict[str, Any] = {
             "item_name": self.item_name,
             "category": self.category,
@@ -53,15 +52,17 @@ class Item:
             "status": self.status,
             "contact_info": self.contact_info,
         }
+        # if we have an ID, add it to the dictionary
         if self.id is not None:
             d["id"] = self.id
         return d
 
 
+# create the items table if it doesn't exist
 def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
-    """Create items table if missing (CHECK constraints match assignment)."""
     conn = sqlite3.connect(db_path)
     try:
+        # create the table with the required fields
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS items (
@@ -83,6 +84,12 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
             """
         )
         conn.commit()
+        
+    # something went wrong!
+    except Exception as e:
+        raise ValueError("Failed to create table") from e
+   
+    # close after we've done everything
     finally:
         conn.close()
 
@@ -95,6 +102,7 @@ def _validate_payload(data: Any) -> dict[str, Any]:
     return data
 
 
+# convert a row from the database to an Item object
 def _row_to_item(row: tuple[Any, ...]) -> Item:
     return Item(
         int(row[0]),
@@ -107,8 +115,8 @@ def _row_to_item(row: tuple[Any, ...]) -> Item:
     )
 
 
+# get all rows from the items table and return them as a list of tuples
 def list_items(db_path: str = DEFAULT_DB_PATH) -> list[tuple[Any, ...]]:
-    """All rows as SQLite tuples (API list view)."""
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.execute("SELECT * FROM items ORDER BY id")
@@ -117,40 +125,40 @@ def list_items(db_path: str = DEFAULT_DB_PATH) -> list[tuple[Any, ...]]:
         conn.close()
 
 
+# filter the items by category, status and keyword
 def filter_items(
     db_path: str = DEFAULT_DB_PATH,
     category: str = "",
     status: str = "",
     keyword: str = "",
 ) -> list[tuple[Any, ...]]:
-    """
-    Filter by category/status and keyword search across name + category.
-
-    Empty values mean "no filter" for that field.
-    """
+    # build the SQL query to filter the items
     clauses: list[str] = []
     params: list[str] = []
 
-    cat = category.strip()
-    stat = status.strip()
-    term = keyword.strip()
+    cat = category.strip()  # category to filter by
+    stat = status.strip()  # status to filter by
+    term = keyword.strip()  # keyword to filter by
 
-    if cat:
+    if cat:  # if a category is provided, add the clause to the query
         clauses.append("lower(category) = lower(?)")
         params.append(cat)
-    if stat:
+    if stat:  # if a status is provided, add the clause to the query
         clauses.append("lower(status) = lower(?)")
         params.append(stat)
-    if term:
+    if term:  # if a keyword is provided, add the clause to the query
         clauses.append(
             "(lower(name) LIKE lower(?) OR lower(category) LIKE lower(?))"
         )
         like = f"%{term}%"
         params.extend([like, like])
 
-    query = "SELECT * FROM items"
+    # start with base (select all) and build up filters as needed
+    query = "SELECT * FROM items" # start with the base query
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
+    
+    # always order by ID
     query += " ORDER BY id"
 
     conn = sqlite3.connect(db_path)
@@ -161,30 +169,30 @@ def filter_items(
         conn.close()
 
 
+# get an individual item by ID
 def get_item(
     db_path: str,
     item_id: int,
 ) -> Item | None:
-    """Return item or None if missing."""
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.execute("SELECT * FROM items WHERE id = ?", (item_id,))
         row = cur.fetchone()
+        # convert it to an Item object
         return _row_to_item(row) if row else None
     finally:
         conn.close()
 
 
+# create a new item in the DB
 def create_item(
     db_path: str,
     data: Any,
 ) -> Item:
-    """
-    Insert from API-shaped dict (name, date_found, ...).
-
-    Raises ValueError for validation/constraint failures.
-    """
+    # check we have all the data we need
     d = _validate_payload(data)
+    
+    # create it as an Item
     item = Item(
         None,
         str(d["name"]).strip(),
@@ -194,6 +202,8 @@ def create_item(
         str(d["status"]).strip(),
         str(d["contact_info"]).strip(),
     )
+    
+    # insert into DB
     conn = sqlite3.connect(db_path)
     try:
         try:
@@ -211,6 +221,8 @@ def create_item(
             )
             conn.commit()
             new_id = int(cur.lastrowid)
+        # something went wrong (doesn't match field constrtaints)
+        # revert and error
         except sqlite3.IntegrityError as e:
             conn.rollback()
             raise ValueError("Data breaks database rules") from e
@@ -220,15 +232,21 @@ def create_item(
     return item
 
 
+# update an item in the DB
 def update_item(
     db_path: str,
     item_id: int,
     data: Any,
 ) -> Item | None:
-    """Update by id. None if id does not exist."""
+    # check we have all the data we need
     d = _validate_payload(data)
+    
+    # check the item exists
     if get_item(db_path, item_id) is None:
+        # no item found, return None
         return None
+    
+    # create all the new updated data as an Item
     item = Item(
         item_id,
         str(d["name"]).strip(),
@@ -238,6 +256,8 @@ def update_item(
         str(d["status"]).strip(),
         str(d["contact_info"]).strip(),
     )
+    
+    # update the item in the DB
     conn = sqlite3.connect(db_path)
     try:
         conn.execute(
@@ -254,19 +274,27 @@ def update_item(
             ),
         )
         conn.commit()
+    # something went wrong (doesn't match field constrtaints)
     except sqlite3.IntegrityError as e:
+        # don't rollback as nothing was changed
         raise ValueError("Data breaks database rules") from e
     finally:
         conn.close()
     return item
 
 
+# delete an item from the DB
 def delete_item(db_path: str, item_id: int) -> bool:
-    """True if a row was deleted."""
+    if get_item(db_path, item_id) is None:
+        # no item found, return False
+        return False
+    
+    # delete the item from the DB
     conn = sqlite3.connect(db_path)
     try:
         cur = conn.execute("DELETE FROM items WHERE id = ?", (item_id,))
         conn.commit()
+        # return True if a row was deleted, False otherwise
         return cur.rowcount > 0
     finally:
         conn.close()

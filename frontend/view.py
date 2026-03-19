@@ -1,4 +1,5 @@
-"""View: Tkinter widgets only. No business logic or SQL."""
+# Tkinter UI view
+
 
 from __future__ import annotations
 
@@ -9,9 +10,9 @@ from tkinter import ttk
 from typing import Any
 
 
+# the main app view
 class MainView:
-    """Main window: form + CRUD buttons + item table."""
-
+    # columns for items table
     COLUMNS = (
         "id",
         "name",
@@ -24,15 +25,19 @@ class MainView:
 
     STATUS_VALUES = ("found", "lost", "claimed")
 
+    # build up the UI on init
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
+        # event handlers for the buttons
         self._on_refresh: Callable[[], None] = lambda: None
         self._on_add: Callable[[], None] = lambda: None
+        self._on_edit: Callable[[], None] = lambda: None
         self._on_save: Callable[[], None] = lambda: None
         self._on_delete: Callable[[], None] = lambda: None
         self._on_clear: Callable[[], None] = lambda: None
         self._on_apply_filters: Callable[[], None] = lambda: None
         self._on_clear_filters: Callable[[], None] = lambda: None
+        # the ID of the item being edited
         self._editing_id: int | None = None
 
         root.title("Lost & Found")
@@ -44,21 +49,29 @@ class MainView:
         form = ttk.LabelFrame(main, text="Item details", padding=8)
         form.pack(fill=tk.X, pady=(0, 8))
 
+        # variables for the form
         self.var_name = tk.StringVar()
         self.var_category = tk.StringVar()
         self.var_date = tk.StringVar()
         self.var_location = tk.StringVar()
         self.var_status = tk.StringVar(value="found")
         self.var_contact = tk.StringVar()
+        
+        # variables for the filters
         self.var_filter_category = tk.StringVar()
         self.var_filter_status = tk.StringVar()
         self.var_filter_search = tk.StringVar()
 
-        
-
+        # buttons
         crud = ttk.Frame(main)
         crud.pack(fill=tk.X, pady=(0, 8))
         ttk.Button(crud, text="Add new", command=self._click_add).pack(
+            side=tk.LEFT, padx=(0, 4)
+        )
+        ttk.Button(crud, text="Edit selected", command=self._click_edit).pack(
+            side=tk.LEFT, padx=(0, 4)
+        )
+        ttk.Button(crud, text="Delete selected", command=self._click_delete).pack(
             side=tk.LEFT, padx=(0, 4)
         )
 
@@ -66,6 +79,7 @@ class MainView:
             side=tk.LEFT, padx=(16, 0)
         )
 
+        # frame for the filters
         filters = ttk.LabelFrame(main, text="Filters", padding=8)
         filters.pack(fill=tk.X, pady=(0, 8))
         ttk.Label(filters, text="Category:").grid(
@@ -98,19 +112,24 @@ class MainView:
             filters, text="Clear", command=self._click_clear_filters
         ).grid(row=0, column=7, sticky=tk.W, pady=2)
 
+        # frame for the items table
         ttk.Label(main, text="All items").pack(anchor=tk.W)
         tree_frame = ttk.Frame(main)
         tree_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # the items table
         self.tree = ttk.Treeview(
             tree_frame,
             columns=self.COLUMNS,
             show="headings",
             height=10,
         )
-        for col in self.COLUMNS:
+        for col in self.COLUMNS: # set the headings and columns
             self.tree.heading(col, text=col.replace("_", " ").title())
             self.tree.column(col, width=95, minwidth=50)
-        self.tree.column("id", width=36, minwidth=36)
+        self.tree.column("id", width=36, minwidth=36) # set the ID column width
+        
+        # the scrollbar
         scroll = ttk.Scrollbar(
             tree_frame, orient=tk.VERTICAL, command=self.tree.yview
         )
@@ -118,9 +137,14 @@ class MainView:
         self.tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scroll.pack(side=tk.RIGHT, fill=tk.Y)
         self.tree.bind("<<TreeviewSelect>>", self._on_tree_select)
+        self.tree.bind("<Double-1>", self._on_tree_double_click)
 
+    # called when the relecvent button is clicked
     def _click_add(self) -> None:
         self._on_add()
+
+    def _click_edit(self) -> None:
+        self._on_edit()
 
     def _click_save(self) -> None:
         self._on_save()
@@ -131,7 +155,9 @@ class MainView:
     def _click_clear(self) -> None:
         self._on_clear()
 
+    # called when an item is selected in the table - set the current selection
     def _on_tree_select(self, _event: tk.Event[Any]) -> None:
+        # get the selected item
         sel = self.tree.selection()
         if not sel:
             return
@@ -139,6 +165,11 @@ class MainView:
         if values and len(values) >= 7:
             self._load_row(values)
 
+    def _on_tree_double_click(self, _event: tk.Event[Any]) -> None:
+        if self.get_selected_item_id() is not None:
+            self._on_edit()
+
+    # load the selected item into the form
     def _load_row(self, values: tuple[Any, ...]) -> None:
         self._editing_id = int(values[0])
         self.var_name.set(str(values[1]))
@@ -153,6 +184,9 @@ class MainView:
 
     def set_add_handler(self, handler: Callable[[], None]) -> None:
         self._on_add = handler
+
+    def set_edit_handler(self, handler: Callable[[], None]) -> None:
+        self._on_edit = handler
 
     def set_save_handler(self, handler: Callable[[], None]) -> None:
         self._on_save = handler
@@ -203,23 +237,65 @@ class MainView:
 
     def show_create_dialog(self) -> dict[str, str] | None:
         """Open a pop-up form for creating a new item."""
+        return self._show_item_dialog(
+            title="Add item",
+            submit_text="Create",
+            item_id=None,
+            initial=None,
+        )
+
+    def show_edit_dialog(
+        self,
+        item_id: int,
+        initial: dict[str, str],
+    ) -> dict[str, str] | None:
+        """Open edit dialog for an existing item (ID read-only)."""
+        return self._show_item_dialog(
+            title=f"Edit item #{item_id}",
+            submit_text="Save changes",
+            item_id=item_id,
+            initial=initial,
+        )
+
+    def _show_item_dialog(
+        self,
+        title: str,
+        submit_text: str,
+        item_id: int | None,
+        initial: dict[str, str] | None,
+    ) -> dict[str, str] | None:
+        """Common create/edit dialog UI used by Add and Edit flows."""
         top = tk.Toplevel(self.root)
-        top.title("Add item")
+        top.title(title)
         top.transient(self.root)
         top.grab_set()
         top.resizable(False, False)
 
         vars_map = {
-            "name": tk.StringVar(),
-            "category": tk.StringVar(),
-            "date_found": tk.StringVar(),
-            "location": tk.StringVar(),
-            "status": tk.StringVar(value="found"),
-            "contact_info": tk.StringVar(),
+            "name": tk.StringVar(value=(initial or {}).get("name", "")),
+            "category": tk.StringVar(value=(initial or {}).get("category", "")),
+            "date_found": tk.StringVar(value=(initial or {}).get("date_found", "")),
+            "location": tk.StringVar(value=(initial or {}).get("location", "")),
+            "status": tk.StringVar(
+                value=(initial or {}).get("status", "found").lower()
+            ),
+            "contact_info": tk.StringVar(
+                value=(initial or {}).get("contact_info", "")
+            ),
         }
 
         frame = ttk.Frame(top, padding=10)
         frame.pack(fill=tk.BOTH, expand=True)
+        start_row = 0
+        if item_id is not None:
+            ttk.Label(frame, text="ID:").grid(
+                row=0, column=0, sticky=tk.W, padx=(0, 8), pady=3
+            )
+            ttk.Label(frame, text=str(item_id)).grid(
+                row=0, column=1, sticky=tk.W, pady=3
+            )
+            start_row = 1
+
         labels = [
             ("Name", "name"),
             ("Category", "category"),
@@ -229,8 +305,9 @@ class MainView:
             ("Contact", "contact_info"),
         ]
         for row, (label, key) in enumerate(labels):
+            row_idx = row + start_row
             ttk.Label(frame, text=f"{label}:").grid(
-                row=row, column=0, sticky=tk.W, padx=(0, 8), pady=3
+                row=row_idx, column=0, sticky=tk.W, padx=(0, 8), pady=3
             )
             if key == "status":
                 combo = ttk.Combobox(
@@ -240,10 +317,10 @@ class MainView:
                     state="readonly",
                     width=28,
                 )
-                combo.grid(row=row, column=1, sticky=tk.W, pady=3)
+                combo.grid(row=row_idx, column=1, sticky=tk.W, pady=3)
             elif key == "date_found":
                 date_row = ttk.Frame(frame)
-                date_row.grid(row=row, column=1, sticky=tk.EW, pady=3)
+                date_row.grid(row=row_idx, column=1, sticky=tk.EW, pady=3)
                 ttk.Entry(
                     date_row,
                     textvariable=vars_map[key],
@@ -259,7 +336,7 @@ class MainView:
                     frame,
                     textvariable=vars_map[key],
                     width=32,
-                ).grid(row=row, column=1, sticky=tk.EW, pady=3)
+                ).grid(row=row_idx, column=1, sticky=tk.EW, pady=3)
         frame.columnconfigure(1, weight=1)
 
         result: dict[str, str] | None = None
@@ -277,11 +354,17 @@ class MainView:
             top.destroy()
 
         btns = ttk.Frame(frame)
-        btns.grid(row=len(labels), column=0, columnspan=2, sticky=tk.E, pady=(8, 0))
+        btns.grid(
+            row=len(labels) + start_row,
+            column=0,
+            columnspan=2,
+            sticky=tk.E,
+            pady=(8, 0),
+        )
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(
             side=tk.RIGHT, padx=(4, 0)
         )
-        ttk.Button(btns, text="Create", command=on_create).pack(side=tk.RIGHT)
+        ttk.Button(btns, text=submit_text, command=on_create).pack(side=tk.RIGHT)
 
         top.wait_window()
         return result
@@ -373,6 +456,16 @@ class MainView:
             if vals:
                 return int(vals[0])
         return self._editing_id
+
+    def get_selected_item_id(self) -> int | None:
+        """ID of selected row, or None when no row selected."""
+        sel = self.tree.selection()
+        if not sel:
+            return None
+        vals = self.tree.item(sel[0], "values")
+        if not vals:
+            return None
+        return int(vals[0])
 
     def set_rows(self, rows: list[tuple[Any, ...]]) -> None:
         for iid in self.tree.get_children():
