@@ -5,7 +5,7 @@ import pytest
 from backend.model import init_db
 
 
-# Create a temporary DB for each test, and init it in the same way as the main app
+# Create a temporary DB for each test, initialized like the app
 @pytest.fixture
 def temp_db(tmp_path):
     db_path = str(tmp_path / "test.db")
@@ -24,7 +24,10 @@ def test_insert_valid_row(temp_db):
         ("Keys", "electronics", "2026-03-17", "Library", "found", "a@b.co"),
     )
     conn.commit()
-    row = conn.execute("SELECT id, name FROM items WHERE name = ?", ("Keys",)).fetchone()
+    row = conn.execute(
+        "SELECT id, name FROM items WHERE name = ?",
+        ("Keys",),
+    ).fetchone()
     conn.close()
     # Check we get one row back for Keys
     assert row[0] == 1
@@ -55,7 +58,10 @@ def test_insert_bad_date_format_raises(temp_db):
         conn.execute(
             "INSERT INTO items (name, category, date_found, location, status, "
             "contact_info) VALUES (?, ?, ?, ?, ?, ?)",
-            ("Keys", "electronics", "17/03/2026", "Library", "found", "a@b.co"),
+            (
+                "Keys", "electronics", "17/03/2026", "Library",
+                "found", "a@b.co",
+            ),
         )
         conn.commit()
     conn.close()
@@ -70,7 +76,10 @@ def test_insert_invalid_status_raises(temp_db):
         conn.execute(
             "INSERT INTO items (name, category, date_found, location, status, "
             "contact_info) VALUES (?, ?, ?, ?, ?, ?)",
-            ("Keys", "electronics", "2026-03-17", "Library", "pending", "a@b.co"),
+            (
+                "Keys", "electronics", "2026-03-17", "Library",
+                "pending", "a@b.co",
+            ),
         )
         conn.commit()
     conn.close()

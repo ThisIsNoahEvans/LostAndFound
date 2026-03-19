@@ -56,7 +56,7 @@ class MainView:
         self.var_location = tk.StringVar()
         self.var_status = tk.StringVar(value="found")
         self.var_contact = tk.StringVar()
-        
+
         # variables for the filters
         self.var_filter_category = tk.StringVar()
         self.var_filter_status = tk.StringVar()
@@ -71,13 +71,17 @@ class MainView:
         ttk.Button(crud, text="Edit selected", command=self._click_edit).pack(
             side=tk.LEFT, padx=(0, 4)
         )
-        ttk.Button(crud, text="Delete selected", command=self._click_delete).pack(
-            side=tk.LEFT, padx=(0, 4)
-        )
+        ttk.Button(
+            crud,
+            text="Delete selected",
+            command=self._click_delete,
+        ).pack(side=tk.LEFT, padx=(0, 4))
 
-        ttk.Button(crud, text="Refresh list", command=self._click_refresh).pack(
-            side=tk.LEFT, padx=(16, 0)
-        )
+        ttk.Button(
+            crud,
+            text="Refresh list",
+            command=self._click_refresh,
+        ).pack(side=tk.LEFT, padx=(16, 0))
 
         # frame for the filters
         filters = ttk.LabelFrame(main, text="Filters", padding=8)
@@ -116,7 +120,7 @@ class MainView:
         ttk.Label(main, text="All items").pack(anchor=tk.W)
         tree_frame = ttk.Frame(main)
         tree_frame.pack(fill=tk.BOTH, expand=True)
-        
+
         # the items table
         self.tree = ttk.Treeview(
             tree_frame,
@@ -124,11 +128,11 @@ class MainView:
             show="headings",
             height=10,
         )
-        for col in self.COLUMNS: # set the headings and columns
+        for col in self.COLUMNS:  # set the headings and columns
             self.tree.heading(col, text=col.replace("_", " ").title())
             self.tree.column(col, width=95, minwidth=50)
-        self.tree.column("id", width=36, minwidth=36) # set the ID column width
-        
+        self.tree.column("id", width=36, minwidth=36)  # set ID column width
+
         # the scrollbar
         scroll = ttk.Scrollbar(
             tree_frame, orient=tk.VERTICAL, command=self.tree.yview
@@ -273,9 +277,15 @@ class MainView:
 
         vars_map = {
             "name": tk.StringVar(value=(initial or {}).get("name", "")),
-            "category": tk.StringVar(value=(initial or {}).get("category", "")),
-            "date_found": tk.StringVar(value=(initial or {}).get("date_found", "")),
-            "location": tk.StringVar(value=(initial or {}).get("location", "")),
+            "category": tk.StringVar(
+                value=(initial or {}).get("category", "")
+            ),
+            "date_found": tk.StringVar(
+                value=(initial or {}).get("date_found", "")
+            ),
+            "location": tk.StringVar(
+                value=(initial or {}).get("location", "")
+            ),
             "status": tk.StringVar(
                 value=(initial or {}).get("status", "found").lower()
             ),
@@ -329,7 +339,8 @@ class MainView:
                 ttk.Button(
                     date_row,
                     text="Pick...",
-                    command=lambda v=vars_map[key]: self._set_date_from_picker(v),
+                    command=lambda v=vars_map[key]:
+                    self._set_date_from_picker(v),
                 ).pack(side=tk.LEFT, padx=(4, 0))
             else:
                 ttk.Entry(
@@ -364,7 +375,11 @@ class MainView:
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(
             side=tk.RIGHT, padx=(4, 0)
         )
-        ttk.Button(btns, text=submit_text, command=on_create).pack(side=tk.RIGHT)
+        ttk.Button(
+            btns,
+            text=submit_text,
+            command=on_create,
+        ).pack(side=tk.RIGHT)
 
         top.wait_window()
         return result
@@ -398,13 +413,35 @@ class MainView:
         frame = ttk.Frame(top, padding=10)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(frame, text="Year").grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
-        ttk.Label(frame, text="Month").grid(row=0, column=1, sticky=tk.W, padx=(0, 6))
+        ttk.Label(frame, text="Year").grid(
+            row=0, column=0, sticky=tk.W, padx=(0, 6)
+        )
+        ttk.Label(frame, text="Month").grid(
+            row=0, column=1, sticky=tk.W, padx=(0, 6)
+        )
         ttk.Label(frame, text="Day").grid(row=0, column=2, sticky=tk.W)
 
-        y_spin = ttk.Spinbox(frame, from_=2000, to=2100, textvariable=y_var, width=8)
-        m_spin = ttk.Spinbox(frame, from_=1, to=12, textvariable=m_var, width=6)
-        d_spin = ttk.Spinbox(frame, from_=1, to=31, textvariable=d_var, width=6)
+        y_spin = ttk.Spinbox(
+            frame,
+            from_=2000,
+            to=2100,
+            textvariable=y_var,
+            width=8,
+        )
+        m_spin = ttk.Spinbox(
+            frame,
+            from_=1,
+            to=12,
+            textvariable=m_var,
+            width=6,
+        )
+        d_spin = ttk.Spinbox(
+            frame,
+            from_=1,
+            to=31,
+            textvariable=d_var,
+            width=6,
+        )
         y_spin.grid(row=1, column=0, sticky=tk.W, padx=(0, 6))
         m_spin.grid(row=1, column=1, sticky=tk.W, padx=(0, 6))
         d_spin.grid(row=1, column=2, sticky=tk.W)
@@ -425,7 +462,13 @@ class MainView:
             top.destroy()
 
         btns = ttk.Frame(frame)
-        btns.grid(row=3, column=0, columnspan=3, sticky=tk.E, pady=(8, 0))
+        btns.grid(
+            row=3,
+            column=0,
+            columnspan=3,
+            sticky=tk.E,
+            pady=(8, 0),
+        )
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(
             side=tk.RIGHT, padx=(4, 0)
         )

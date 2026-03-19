@@ -84,11 +84,11 @@ def init_db(db_path: str = DEFAULT_DB_PATH) -> None:
             """
         )
         conn.commit()
-        
+
     # something went wrong!
     except Exception as e:
         raise ValueError("Failed to create table") from e
-   
+
     # close after we've done everything
     finally:
         conn.close()
@@ -154,10 +154,10 @@ def filter_items(
         params.extend([like, like])
 
     # start with base (select all) and build up filters as needed
-    query = "SELECT * FROM items" # start with the base query
+    query = "SELECT * FROM items"  # start with the base query
     if clauses:
         query += " WHERE " + " AND ".join(clauses)
-    
+
     # always order by ID
     query += " ORDER BY id"
 
@@ -191,7 +191,7 @@ def create_item(
 ) -> Item:
     # check we have all the data we need
     d = _validate_payload(data)
-    
+
     # create it as an Item
     item = Item(
         None,
@@ -202,7 +202,7 @@ def create_item(
         str(d["status"]).strip(),
         str(d["contact_info"]).strip(),
     )
-    
+
     # insert into DB
     conn = sqlite3.connect(db_path)
     try:
@@ -240,12 +240,12 @@ def update_item(
 ) -> Item | None:
     # check we have all the data we need
     d = _validate_payload(data)
-    
+
     # check the item exists
     if get_item(db_path, item_id) is None:
         # no item found, return None
         return None
-    
+
     # create all the new updated data as an Item
     item = Item(
         item_id,
@@ -256,7 +256,7 @@ def update_item(
         str(d["status"]).strip(),
         str(d["contact_info"]).strip(),
     )
-    
+
     # update the item in the DB
     conn = sqlite3.connect(db_path)
     try:
@@ -288,7 +288,7 @@ def delete_item(db_path: str, item_id: int) -> bool:
     if get_item(db_path, item_id) is None:
         # no item found, return False
         return False
-    
+
     # delete the item from the DB
     conn = sqlite3.connect(db_path)
     try:
