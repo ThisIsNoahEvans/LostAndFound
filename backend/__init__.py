@@ -1,1 +1,1 @@
-"""Lost and found backend package."""
+"""Backend database"""

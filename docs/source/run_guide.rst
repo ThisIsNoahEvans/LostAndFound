@@ -23,12 +23,6 @@ Run desktop application
 
 .. code-block:: bash
 
-   python run_dev.py
-
-or
-
-.. code-block:: bash
-
    python -m frontend.app
 
 The app creates `lost_and_found.db` on first run.

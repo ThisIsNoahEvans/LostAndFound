@@ -1,4 +1,4 @@
-"""Paths shared by the frontend."""
+"""shared paths for DB"""
 
 from pathlib import Path
 

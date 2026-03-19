@@ -5,7 +5,7 @@ import pytest
 from backend.model import init_db
 
 
-# Create a temporary DB for each test, initialized like the app
+# Create a temporary DB for each test, init'ed like the app does
 @pytest.fixture
 def temp_db(tmp_path):
     db_path = str(tmp_path / "test.db")

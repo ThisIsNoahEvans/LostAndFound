@@ -18,12 +18,14 @@ class MainView:
         "name",
         "category",
         "date_found",
+        "date_lost",
         "location",
         "status",
         "contact_info",
     )
 
     STATUS_VALUES = ("found", "lost", "claimed")
+    CATEGORY_VALUES = ("electronics", "clothing", "books", "other")
 
     # build up the UI on init
     def __init__(self, root: tk.Tk) -> None:
@@ -52,14 +54,15 @@ class MainView:
         # variables for the form
         self.var_name = tk.StringVar()
         self.var_category = tk.StringVar()
-        self.var_date = tk.StringVar()
+        self.var_date_found = tk.StringVar()
+        self.var_date_lost = tk.StringVar()
         self.var_location = tk.StringVar()
         self.var_status = tk.StringVar(value="found")
         self.var_contact = tk.StringVar()
 
         # variables for the filters
-        self.var_filter_category = tk.StringVar()
-        self.var_filter_status = tk.StringVar()
+        self.var_filter_category = tk.StringVar(value="All")
+        self.var_filter_status = tk.StringVar(value="All")
         self.var_filter_search = tk.StringVar()
 
         # buttons
@@ -89,13 +92,18 @@ class MainView:
         ttk.Label(filters, text="Category:").grid(
             row=0, column=0, sticky=tk.W, padx=(0, 6), pady=2
         )
-        ttk.Entry(
-            filters, textvariable=self.var_filter_category, width=20
+        category_options = ("All",) + self.CATEGORY_VALUES
+        ttk.Combobox(
+            filters,
+            textvariable=self.var_filter_category,
+            values=category_options,
+            state="readonly",
+            width=18,
         ).grid(row=0, column=1, sticky=tk.W, padx=(0, 10), pady=2)
         ttk.Label(filters, text="Status:").grid(
             row=0, column=2, sticky=tk.W, padx=(0, 6), pady=2
         )
-        status_options = ("",) + self.STATUS_VALUES
+        status_options = ("All",) + self.STATUS_VALUES
         ttk.Combobox(
             filters,
             textvariable=self.var_filter_status,
@@ -166,7 +174,7 @@ class MainView:
         if not sel:
             return
         values = self.tree.item(sel[0], "values")
-        if values and len(values) >= 7:
+        if values and len(values) >= 8:
             self._load_row(values)
 
     def _on_tree_double_click(self, _event: tk.Event[Any]) -> None:
@@ -178,10 +186,11 @@ class MainView:
         self._editing_id = int(values[0])
         self.var_name.set(str(values[1]))
         self.var_category.set(str(values[2]))
-        self.var_date.set(str(values[3]))
-        self.var_location.set(str(values[4]))
-        self.var_status.set(str(values[5]).lower())
-        self.var_contact.set(str(values[6]))
+        self.var_date_found.set(str(values[3] or ""))
+        self.var_date_lost.set(str(values[4] or ""))
+        self.var_location.set(str(values[5]))
+        self.var_status.set(str(values[6]).lower())
+        self.var_contact.set(str(values[7]))
 
     def set_refresh_handler(self, handler: Callable[[], None]) -> None:
         self._on_refresh = handler
@@ -217,15 +226,17 @@ class MainView:
         self._on_clear_filters()
 
     def get_filter_values(self) -> tuple[str, str, str]:
+        category = self.var_filter_category.get().strip()
+        status = self.var_filter_status.get().strip()
         return (
-            self.var_filter_category.get().strip(),
-            self.var_filter_status.get().strip(),
+            "" if category.lower() == "all" else category,
+            "" if status.lower() == "all" else status,
             self.var_filter_search.get().strip(),
         )
 
     def clear_filters(self) -> None:
-        self.var_filter_category.set("")
-        self.var_filter_status.set("")
+        self.var_filter_category.set("All")
+        self.var_filter_status.set("All")
         self.var_filter_search.set("")
 
     def get_form_payload(self) -> dict[str, str]:
@@ -233,7 +244,8 @@ class MainView:
         return {
             "name": self.var_name.get().strip(),
             "category": self.var_category.get().strip(),
-            "date_found": self.var_date.get().strip(),
+            "date_found": self.var_date_found.get().strip(),
+            "date_lost": self.var_date_lost.get().strip(),
             "location": self.var_location.get().strip(),
             "status": self.var_status.get().strip(),
             "contact_info": self.var_contact.get().strip(),
@@ -245,7 +257,8 @@ class MainView:
             title="Add item",
             submit_text="Create",
             item_id=None,
-            initial=None,
+            initial={"status": "lost"},
+            hidden_fields={"date_found", "status"},
         )
 
     def show_edit_dialog(
@@ -267,6 +280,7 @@ class MainView:
         submit_text: str,
         item_id: int | None,
         initial: dict[str, str] | None,
+        hidden_fields: set[str] | None = None,
     ) -> dict[str, str] | None:
         """Common create/edit dialog UI used by Add and Edit flows."""
         top = tk.Toplevel(self.root)
@@ -282,6 +296,9 @@ class MainView:
             ),
             "date_found": tk.StringVar(
                 value=(initial or {}).get("date_found", "")
+            ),
+            "date_lost": tk.StringVar(
+                value=(initial or {}).get("date_lost", "")
             ),
             "location": tk.StringVar(
                 value=(initial or {}).get("location", "")
@@ -306,15 +323,18 @@ class MainView:
             )
             start_row = 1
 
+        hidden = hidden_fields or set()
         labels = [
             ("Name", "name"),
             ("Category", "category"),
-            ("Date (YYYY-MM-DD)", "date_found"),
+            ("Date Found (YYYY-MM-DD)", "date_found"),
+            ("Date Lost (YYYY-MM-DD)", "date_lost"),
             ("Location", "location"),
             ("Status", "status"),
             ("Contact", "contact_info"),
         ]
-        for row, (label, key) in enumerate(labels):
+        visible_labels = [pair for pair in labels if pair[1] not in hidden]
+        for row, (label, key) in enumerate(visible_labels):
             row_idx = row + start_row
             ttk.Label(frame, text=f"{label}:").grid(
                 row=row_idx, column=0, sticky=tk.W, padx=(0, 8), pady=3
@@ -328,7 +348,7 @@ class MainView:
                     width=28,
                 )
                 combo.grid(row=row_idx, column=1, sticky=tk.W, pady=3)
-            elif key == "date_found":
+            elif key in {"date_found", "date_lost"}:
                 date_row = ttk.Frame(frame)
                 date_row.grid(row=row_idx, column=1, sticky=tk.EW, pady=3)
                 ttk.Entry(
@@ -358,6 +378,7 @@ class MainView:
                 "name": vars_map["name"].get().strip(),
                 "category": vars_map["category"].get().strip(),
                 "date_found": vars_map["date_found"].get().strip(),
+                "date_lost": vars_map["date_lost"].get().strip(),
                 "location": vars_map["location"].get().strip(),
                 "status": vars_map["status"].get().strip(),
                 "contact_info": vars_map["contact_info"].get().strip(),
@@ -366,7 +387,7 @@ class MainView:
 
         btns = ttk.Frame(frame)
         btns.grid(
-            row=len(labels) + start_row,
+            row=len(visible_labels) + start_row,
             column=0,
             columnspan=2,
             sticky=tk.E,
@@ -389,8 +410,8 @@ class MainView:
         if picked is not None:
             target_var.set(picked)
 
+    # open the date picker dialog - returns the date as YYYY-MM-DD or None
     def _open_date_picker(self, initial_date: str) -> str | None:
-        """Simple built-in date picker, returns YYYY-MM-DD or None."""
         top = tk.Toplevel(self.root)
         top.title("Select date")
         top.transient(self.root)
@@ -451,6 +472,7 @@ class MainView:
             row=2, column=0, columnspan=3, sticky=tk.W, pady=(6, 0)
         )
 
+        # on OK, set the result to the date and close the dialog
         def on_ok() -> None:
             nonlocal result
             try:
@@ -469,6 +491,8 @@ class MainView:
             sticky=tk.E,
             pady=(8, 0),
         )
+
+        # on Cancel, close the dialog
         ttk.Button(btns, text="Cancel", command=top.destroy).pack(
             side=tk.RIGHT, padx=(4, 0)
         )
@@ -477,31 +501,25 @@ class MainView:
         top.wait_window()
         return result
 
+    # get the ID of the item being edited
     def get_editing_id(self) -> int | None:
         return self._editing_id
 
+    # clear the form - reset the form variables and the selected item
     def clear_form(self) -> None:
         self._editing_id = None
         self.var_name.set("")
         self.var_category.set("")
-        self.var_date.set("")
+        self.var_date_found.set("")
+        self.var_date_lost.set("")
         self.var_location.set("")
         self.var_status.set("found")
         self.var_contact.set("")
         for iid in self.tree.selection():
             self.tree.selection_remove(iid)
 
+    # get the ID of the item to delete
     def delete_target_id(self) -> int | None:
-        """Prefer tree selection, else id from last loaded row."""
-        sel = self.tree.selection()
-        if sel:
-            vals = self.tree.item(sel[0], "values")
-            if vals:
-                return int(vals[0])
-        return self._editing_id
-
-    def get_selected_item_id(self) -> int | None:
-        """ID of selected row, or None when no row selected."""
         sel = self.tree.selection()
         if not sel:
             return None
@@ -510,6 +528,17 @@ class MainView:
             return None
         return int(vals[0])
 
+    # get the ID of the selected item
+    def get_selected_item_id(self) -> int | None:
+        sel = self.tree.selection()
+        if not sel:
+            return None
+        vals = self.tree.item(sel[0], "values")
+        if not vals:
+            return None
+        return int(vals[0])
+
+    # set the rows in the table
     def set_rows(self, rows: list[tuple[Any, ...]]) -> None:
         for iid in self.tree.get_children():
             self.tree.delete(iid)
